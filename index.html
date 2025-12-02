@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARC Raiders Expedition Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --arc-orange: #ff5f1f;
+            --arc-dark: #0f1115;
+            --arc-panel: #1a1d24;
+            --arc-border: #333a45;
+        }
+        body {
+            background-color: var(--arc-dark);
+            color: #e5e7eb;
+            font-family: 'Courier New', Courier, monospace; /* Retro-tech feel */
+        }
+        .arc-panel {
+            background-color: var(--arc-panel);
+            border: 1px solid var(--arc-border);
+        }
+        .arc-input {
+            background-color: #0f1115;
+            border: 1px solid #333a45;
+            color: white;
+            transition: all 0.2s;
+        }
+        .arc-input:focus {
+            border-color: var(--arc-orange);
+            outline: none;
+            box-shadow: 0 0 5px rgba(255, 95, 31, 0.5);
+        }
+        .accent-text {
+            color: var(--arc-orange);
+        }
+        .progress-bar-bg {
+            background-color: #0f1115;
+        }
+        .progress-bar-fill {
+            background-color: var(--arc-orange);
+            transition: width 0.5s ease-in-out;
+        }
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--arc-dark);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333a45;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--arc-orange);
+        }
+        
+        /* Countdown Animation */
+        @keyframes pulse-orange {
+            0%, 100% { color: var(--arc-orange); text-shadow: 0 0 5px rgba(255, 95, 31, 0.2); }
+            50% { color: #fff; text-shadow: 0 0 10px rgba(255, 95, 31, 0.8); }
+        }
+        .timer-active {
+            animation: pulse-orange 2s infinite;
+        }
+        
+        /* Celebration Animation */
+        @keyframes celebrate {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(74, 222, 128, 0.6); }
+            100% { transform: scale(1); }
+        }
+        .stage-complete-animation {
+            animation: celebrate 0.6s ease-out;
+        }
+        
+        /* Increment Buttons */
+        .increment-btn {
+            background-color: #1a1d24;
+            border: 1px solid #333a45;
+            color: #9ca3af;
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            touch-action: manipulation;
+            min-width: 40px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .increment-btn:active {
+            background-color: var(--arc-orange);
+            color: white;
+            transform: scale(0.95);
+        }
+        .increment-btn:hover {
+            border-color: var(--arc-orange);
+            color: white;
+        }
+        
+        /* Better mobile input */
+        input[type="number"] {
+            font-size: 16px; /* Prevents zoom on iOS */
+            min-height: 44px; /* Apple's recommended touch target */
+        }
+        
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            background-color: #1a1d24;
+            color: #e5e7eb;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+            border: 1px solid #333a45;
+            font-size: 0.75rem;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        /* Collapsible section */
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .collapsible-content.open {
+            max-height: 1000px;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8 border-b border-gray-700 pb-4">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold tracking-tighter uppercase">Expedition <span class="accent-text">Tracker</span></h1>
+                    <p class="text-gray-400 text-sm mt-1">Window: <span class="text-white">Dec 15 - Dec 20, 2025</span></p>
+                </div>
+                <div class="mt-4 md:mt-0 text-right w-full md:w-auto">
+                    <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">Total Completion</div>
+                    <div class="text-2xl font-bold accent-text" id="total-progress">0%</div>
+                </div>
+            </div>
+            
+            <!-- Countdown Container -->
+            <div class="mt-6 p-4 bg-gray-900 border border-gray-700 rounded flex flex-col items-center justify-center text-center">
+                <div id="countdown-label" class="text-xs text-gray-400 uppercase tracking-[0.2em] mb-1">Status Check...</div>
+                <div id="countdown-timer" class="text-2xl md:text-4xl font-bold font-mono tracking-widest timer-active">00d 00h 00m 00s</div>
+            </div>
+        </header>
+
+        <!-- Totals Summary Section -->
+        <div class="arc-panel rounded-lg mb-6 overflow-hidden">
+            <button onclick="toggleTotals()" class="w-full p-4 flex justify-between items-center hover:bg-gray-800/50 transition" aria-expanded="true" aria-controls="totals-content">
+                <div class="flex items-center space-x-3">
+                    <span class="text-lg font-bold uppercase tracking-wide">📊 Total Materials Summary</span>
+                    <span id="totals-badge" class="text-xs border border-gray-600 text-gray-500 px-2 py-1 rounded">Click to collapse</span>
+                </div>
+                <svg id="totals-chevron" class="w-5 h-5 transform transition-transform rotate-180" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+            </button>
+            <div id="totals-content" class="collapsible-content open">
+                <div class="p-4 border-t border-gray-700">
+                    <!-- Physical Items Section -->
+                    <div class="mb-6">
+                        <div class="text-xs text-gray-400 uppercase tracking-wider mb-3 font-bold flex items-center">
+                            <span class="mr-2">🔧</span> Physical Items (Stages 1-4)
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div class="text-center p-3 bg-gray-900 rounded">
+                                <div class="text-xs text-gray-400 mb-1">Required</div>
+                                <div class="text-xl font-bold accent-text" id="physical-items-count">0</div>
+                            </div>
+                            <div class="text-center p-3 bg-gray-900 rounded">
+                                <div class="text-xs text-gray-400 mb-1">Collected</div>
+                                <div class="text-xl font-bold text-green-400" id="physical-collected-count">0</div>
+                            </div>
+                            <div class="text-center p-3 bg-gray-900 rounded">
+                                <div class="text-xs text-gray-400 mb-1">Remaining</div>
+                                <div class="text-xl font-bold text-yellow-400" id="physical-remaining-count">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Item Values Section -->
+                    <div class="mb-6 pb-6 border-b border-gray-700">
+                        <div class="text-xs text-gray-400 uppercase tracking-wider mb-3 font-bold flex items-center">
+                            <span class="mr-2">💰</span> Item Values (Stage 5)
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div class="text-center p-3 bg-gray-900 rounded">
+                                <div class="text-xs text-gray-400 mb-1">Required</div>
+                                <div class="text-xl font-bold accent-text" id="value-items-count">0</div>
+                            </div>
+                            <div class="text-center p-3 bg-gray-900 rounded">
+                                <div class="text-xs text-gray-400 mb-1">Collected</div>
+                                <div class="text-xl font-bold text-green-400" id="value-collected-count">0</div>
+                            </div>
+                            <div class="text-center p-3 bg-gray-900 rounded">
+                                <div class="text-xs text-gray-400 mb-1">Remaining</div>
+                                <div class="text-xl font-bold text-yellow-400" id="value-remaining-count">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Last Saved & Breakdown -->
+                    <div class="text-center mb-4 p-3 bg-gray-900 rounded">
+                        <div class="text-xs text-gray-400 mb-1">Last Saved</div>
+                        <div class="text-xs font-mono text-gray-300" id="last-saved">Never</div>
+                    </div>
+                    <div id="totals-breakdown" class="space-y-2 text-sm"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex flex-wrap justify-end gap-2 mb-6">
+            <button onclick="saveData()" class="hidden text-xs text-green-500 uppercase tracking-widest" id="save-indicator">✓ Saved</button>
+            <button onclick="exportData()" class="text-xs text-blue-400 hover:text-blue-300 uppercase tracking-widest border border-blue-900 px-3 py-2 rounded hover:bg-blue-900/20 transition" title="Download progress as JSON file">
+                📥 Export Data
+            </button>
+            <button onclick="document.getElementById('import-file').click()" class="text-xs text-purple-400 hover:text-purple-300 uppercase tracking-widest border border-purple-900 px-3 py-2 rounded hover:bg-purple-900/20 transition" title="Import progress from JSON file">
+                📤 Import Data
+            </button>
+            <button onclick="resetData()" class="text-xs text-red-500 hover:text-red-400 uppercase tracking-widest border border-red-900 px-3 py-2 rounded hover:bg-red-900/20 transition">
+                🗑️ Reset Protocol
+            </button>
+            <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
+        </div>
+
+        <!-- Stages Container -->
+        <div class="space-y-6" id="stages-container">
+            <!-- Stages will be injected here by JS -->
+        </div>
+        
+        <!-- Stage 6 Static Info -->
+        <div class="arc-panel rounded-lg p-6 mt-6 opacity-75">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold uppercase tracking-wide text-gray-400">Stage 6: Departure</h2>
+                <span class="text-xs border border-gray-600 text-gray-400 px-2 py-1 rounded">Wait Phase</span>
+            </div>
+            <p class="text-sm text-gray-400">
+                Window opens <strong class="text-white">Dec 15th</strong>. Window closes <strong class="text-white">Dec 20th</strong>. <br>
+                Ensure all materials are submitted before the window closes. Departure occurs automatically on Dec 21st.
+            </p>
+        </div>
+
+        <footer class="mt-12 text-center text-xs text-gray-600">
+            <p>Data is stored locally in your browser. Use Export to backup your progress.</p>
+            <p class="mt-1 text-gray-700">Tracker v1.1 | Created by cryptoBrando   Enjoy! =D</p>
+        </footer>
+    </div>
+
+    <script>
+        // Configuration of all stages and items
+        const projectData = [
+            {
+                id: "stage1",
+                title: "Stage 1: Foundation",
+                items: [
+                    { id: "s1_metal", name: "Metal Parts", req: 150 },
+                    { id: "s1_rubber", name: "Rubber Parts", req: 200 },
+                    { id: "s1_alloy", name: "ARC Alloy", req: 80 },
+                    { id: "s1_spring", name: "Steel Springs", req: 15 }
+                ]
+            },
+            {
+                id: "stage2",
+                title: "Stage 2: Core Systems",
+                items: [
+                    { id: "s2_cloth", name: "Durable Cloth", req: 35 },
+                    { id: "s2_wires", name: "Wires", req: 30 },
+                    { id: "s2_elec", name: "Electrical Components", req: 30 },
+                    { id: "s2_fans", name: "Cooling Fans", req: 5 }
+                ]
+            },
+            {
+                id: "stage3",
+                title: "Stage 3: Framework",
+                items: [
+                    { id: "s3_bulb", name: "Light Bulbs", req: 5 },
+                    { id: "s3_batt", name: "Batteries", req: 30 },
+                    { id: "s3_sensor", name: "Sensors", req: 20 },
+                    { id: "s3_exodus", name: "Exodus Module", req: 1 }
+                ]
+            },
+            {
+                id: "stage4",
+                title: "Stage 4: Outfitting",
+                items: [
+                    { id: "s4_humid", name: "Humidifiers", req: 5 },
+                    { id: "s4_adv_elec", name: "Adv. Electrical Comp.", req: 5 },
+                    { id: "s4_mag", name: "Magnetic Accelerators", req: 3 },
+                    { id: "s4_leaper", name: "Leaper Pulse Units", req: 3 }
+                ]
+            },
+            {
+                id: "stage5",
+                title: "Stage 5: Loading Phase (Item Value)",
+                isCurrency: true,
+                items: [
+                    { id: "s5_combat", name: "Combat Items Value", req: 250000 },
+                    { id: "s5_survival", name: "Survival Items Value", req: 100000 },
+                    { id: "s5_provisions", name: "Provisions Value", req: 180000 },
+                    { id: "s5_materials", name: "Materials Value", req: 300000 }
+                ]
+            }
+        ];
+
+        // Countdown Logic
+        function updateCountdown() {
+            const now = new Date().getTime();
+            
+            // Dates are based on UTC to ensure global sync
+            const windowOpen = new Date('2025-12-15T00:00:00Z').getTime();
+            const windowClose = new Date('2025-12-20T23:59:59Z').getTime();
+            
+            const labelEl = document.getElementById('countdown-label');
+            const timerEl = document.getElementById('countdown-timer');
+            
+            let distance;
+            
+            if (now < windowOpen) {
+                // Counting down to open
+                distance = windowOpen - now;
+                labelEl.innerHTML = "Departure Window Opens In:";
+                labelEl.className = "text-xs text-blue-400 uppercase tracking-[0.2em] mb-1";
+                timerEl.style.color = "white";
+            } else if (now >= windowOpen && now < windowClose) {
+                // Window is open! Counting down to close
+                distance = windowClose - now;
+                labelEl.innerHTML = "CRITICAL: DEPARTURE WINDOW ACTIVE. CLOSES IN:";
+                labelEl.className = "text-xs text-red-500 font-bold uppercase tracking-[0.2em] mb-1 animate-pulse";
+                timerEl.style.color = "var(--arc-orange)";
+            } else {
+                // Window closed
+                labelEl.innerHTML = "Status:";
+                timerEl.innerHTML = "DEPARTURE WINDOW CLOSED";
+                timerEl.classList.remove('timer-active');
+                timerEl.style.color = "gray";
+                return;
+            }
+            
+            // Time calculations
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            
+            timerEl.innerHTML = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+        }
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            renderStages();
+            loadData();
+            updateCalculations();
+            
+            // Start Timer
+            setInterval(updateCountdown, 1000);
+            updateCountdown(); // Initial call
+        });
+
+        function renderStages() {
+            const container = document.getElementById('stages-container');
+            container.innerHTML = '';
+
+            projectData.forEach(stage => {
+                const stageDiv = document.createElement('div');
+                stageDiv.className = 'arc-panel rounded-lg p-6 relative overflow-hidden';
+                
+                // Header
+                let html = `
+                    <div class="flex justify-between items-center mb-6 relative z-10">
+                        <h2 class="text-xl font-bold uppercase tracking-wide">${stage.title}</h2>
+                        <span id="badge-${stage.id}" class="text-xs border border-gray-600 text-gray-500 px-2 py-1 rounded transition-colors duration-300">INCOMPLETE</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 relative z-10">
+                `;
+
+                // Items
+                stage.items.forEach(item => {
+                    const isCurrency = stage.isCurrency ? ' (Value)' : '';
+                    const maxAttr = stage.isCurrency ? '' : `max="${item.req}"`;
+                    
+                    html += `
+                        <div class="flex flex-col">
+                            <div class="flex justify-between text-xs text-gray-400 mb-1">
+                                <span class="tooltip">
+                                    ${item.name}
+                                    <span class="tooltiptext">Required: ${item.req.toLocaleString()}</span>
+                                </span>
+                                <span id="text-${item.id}">0 / ${item.req.toLocaleString()}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button class="increment-btn rounded" onclick="adjustValue('${item.id}', -10)" aria-label="Decrease by 10">-10</button>
+                                <button class="increment-btn rounded" onclick="adjustValue('${item.id}', -1)" aria-label="Decrease by 1">-1</button>
+                                <input 
+                                    type="number" 
+                                    id="${item.id}" 
+                                    data-req="${item.req}" 
+                                    data-stage="${stage.id}"
+                                    class="arc-input flex-1 p-2 text-sm rounded font-mono text-center" 
+                                    placeholder="0" 
+                                    min="0"
+                                    ${maxAttr}
+                                    oninput="handleInput(this)"
+                                    aria-label="${item.name} quantity"
+                                >
+                                <button class="increment-btn rounded" onclick="adjustValue('${item.id}', 1)" aria-label="Increase by 1">+1</button>
+                                <button class="increment-btn rounded" onclick="adjustValue('${item.id}', 10)" aria-label="Increase by 10">+10</button>
+                            </div>
+                            <!-- Mini Progress Bar for item -->
+                            <div class="w-full h-1 bg-gray-800 mt-1 rounded-full overflow-hidden">
+                                <div id="bar-${item.id}" class="h-full bg-gray-600 w-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+                
+                // Stage Progress Bar (Bottom)
+                html += `
+                    <div class="absolute bottom-0 left-0 w-full h-1 bg-gray-800">
+                        <div id="stage-bar-${stage.id}" class="h-full progress-bar-fill w-0"></div>
+                    </div>
+                `;
+
+                stageDiv.innerHTML = html;
+                container.appendChild(stageDiv);
+            });
+        }
+
+        function adjustValue(itemId, delta) {
+            const input = document.getElementById(itemId);
+            const currentVal = parseInt(input.value) || 0;
+            const req = parseInt(input.getAttribute('data-req'));
+            const maxAttr = input.getAttribute('max');
+            
+            let newVal = currentVal + delta;
+            newVal = Math.max(0, newVal); // Don't go below 0
+            
+            if (maxAttr) {
+                newVal = Math.min(newVal, parseInt(maxAttr)); // Respect max if it exists
+            }
+            
+            input.value = newVal;
+            handleInput(input);
+        }
+
+        function handleInput(input) {
+            const val = parseInt(input.value) || 0;
+            const req = parseInt(input.getAttribute('data-req'));
+            
+            // UI Updates for the specific item
+            const textDisplay = document.getElementById(`text-${input.id}`);
+            const barDisplay = document.getElementById(`bar-${input.id}`);
+            
+            textDisplay.textContent = `${val.toLocaleString()} / ${req.toLocaleString()}`;
+            const percentage = Math.min((val / req) * 100, 100);
+            
+            barDisplay.style.width = `${percentage}%`;
+            
+            if (val >= req) {
+                input.classList.add('text-green-400', 'border-green-800');
+                barDisplay.classList.remove('bg-gray-600');
+                barDisplay.classList.add('bg-green-500');
+                textDisplay.classList.add('text-green-500');
+            } else {
+                input.classList.remove('text-green-400', 'border-green-800');
+                barDisplay.classList.add('bg-gray-600');
+                barDisplay.classList.remove('bg-green-500');
+                textDisplay.classList.remove('text-green-500');
+            }
+
+            updateCalculations();
+            saveData();
+        }
+
+        function updateCalculations() {
+            let totalItems = 0;
+            let completedItems = 0;
+            let totalItemsCount = 0;
+            let totalCollectedCount = 0;
+
+            projectData.forEach(stage => {
+                let stageComplete = true;
+                let stageTotalReq = 0;
+                let stageTotalVal = 0;
+
+                stage.items.forEach(item => {
+                    const input = document.getElementById(item.id);
+                    const val = parseInt(input.value) || 0;
+                    
+                    // For global progress, we count percentages of each item to avoid 
+                    // the massive Stage 5 numbers skewing the graph
+                    totalItems += 100; 
+                    completedItems += Math.min((val / item.req) * 100, 100);
+                    
+                    // For totals display
+                    totalItemsCount += item.req;
+                    totalCollectedCount += val;
+
+                    if (val < item.req) stageComplete = false;
+                });
+
+                // Update Stage Header Badge
+                const badge = document.getElementById(`badge-${stage.id}`);
+                const stageBar = document.getElementById(`stage-bar-${stage.id}`);
+                const stageDiv = stageBar.closest('.arc-panel');
+                
+                if (stageComplete) {
+                    badge.textContent = "✓ COMPLETE";
+                    badge.className = "text-xs border border-green-500 bg-green-900/20 text-green-400 px-2 py-1 rounded shadow-[0_0_10px_rgba(74,222,128,0.2)]";
+                    stageBar.style.width = "100%";
+                    stageBar.style.backgroundColor = "#4ade80"; // Tailwind green-400
+                    
+                    // Add celebration animation if just completed
+                    if (!stageDiv.classList.contains('stage-complete-animation')) {
+                        stageDiv.classList.add('stage-complete-animation');
+                        setTimeout(() => stageDiv.classList.remove('stage-complete-animation'), 600);
+                    }
+                } else {
+                    badge.textContent = "INCOMPLETE";
+                    badge.className = "text-xs border border-gray-600 text-gray-500 px-2 py-1 rounded";
+                    
+                    // Calculate stage percentage for bottom bar
+                    // Sum of item percentages / count
+                    let stagePct = 0;
+                    stage.items.forEach(item => {
+                        const input = document.getElementById(item.id);
+                        const val = parseInt(input.value) || 0;
+                        stagePct += Math.min((val / item.req) * 100, 100);
+                    });
+                    stageBar.style.width = `${stagePct / stage.items.length}%`;
+                    stageBar.style.backgroundColor = "#ff5f1f"; // Reset to orange
+                }
+            });
+
+            // Update Total Progress
+            const totalPercentage = Math.round((completedItems / totalItems) * 100);
+            document.getElementById('total-progress').textContent = `${totalPercentage}%`;
+            document.getElementById('total-progress').style.color = totalPercentage === 100 ? '#4ade80' : 'var(--arc-orange)';
+            
+            // Update Totals Summary
+            updateTotalsSummary(totalItemsCount, totalCollectedCount);
+        }
+        
+        function updateTotalsSummary(totalReq, totalCollected) {
+            const remaining = totalReq - totalCollected;
+            
+            // Separate physical items (stages 1-4) from values (stage 5)
+            let physicalReq = 0;
+            let physicalCollected = 0;
+            let valueReq = 0;
+            let valueCollected = 0;
+            
+            projectData.forEach(stage => {
+                stage.items.forEach(item => {
+                    const input = document.getElementById(item.id);
+                    const val = parseInt(input.value) || 0;
+                    
+                    if (stage.isCurrency) {
+                        valueReq += item.req;
+                        valueCollected += val;
+                    } else {
+                        physicalReq += item.req;
+                        physicalCollected += val;
+                    }
+                });
+            });
+            
+            // Update Physical Items
+            document.getElementById('physical-items-count').textContent = physicalReq.toLocaleString();
+            document.getElementById('physical-collected-count').textContent = physicalCollected.toLocaleString();
+            document.getElementById('physical-remaining-count').textContent = (physicalReq - physicalCollected).toLocaleString();
+            
+            // Update Item Values
+            document.getElementById('value-items-count').textContent = valueReq.toLocaleString();
+            document.getElementById('value-collected-count').textContent = valueCollected.toLocaleString();
+            document.getElementById('value-remaining-count').textContent = (valueReq - valueCollected).toLocaleString();
+            
+            // Update breakdown by stage
+            const breakdownDiv = document.getElementById('totals-breakdown');
+            let breakdownHTML = '<div class="text-xs text-gray-400 uppercase tracking-wider mb-2 font-bold">By Stage:</div>';
+            
+            projectData.forEach(stage => {
+                let stageReq = 0;
+                let stageCollected = 0;
+                
+                stage.items.forEach(item => {
+                    const input = document.getElementById(item.id);
+                    const val = parseInt(input.value) || 0;
+                    stageReq += item.req;
+                    stageCollected += val;
+                });
+                
+                const stagePct = Math.round((stageCollected / stageReq) * 100);
+                const stageRemaining = stageReq - stageCollected;
+                
+                breakdownHTML += `
+                    <div class="flex justify-between items-center p-2 bg-gray-900/50 rounded text-xs">
+                        <span class="text-gray-300">${stage.title}</span>
+                        <div class="flex items-center space-x-4">
+                            <span class="text-gray-400">${stageCollected.toLocaleString()} / ${stageReq.toLocaleString()}</span>
+                            <span class="font-bold ${stagePct === 100 ? 'text-green-400' : 'text-yellow-400'}">${stagePct}%</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            breakdownDiv.innerHTML = breakdownHTML;
+        }
+        
+        function toggleTotals() {
+            const content = document.getElementById('totals-content');
+            const chevron = document.getElementById('totals-chevron');
+            const button = content.previousElementSibling;
+            
+            content.classList.toggle('open');
+            chevron.classList.toggle('rotate-180');
+            
+            const isOpen = content.classList.contains('open');
+            button.setAttribute('aria-expanded', isOpen);
+            
+            const badge = document.getElementById('totals-badge');
+            badge.textContent = isOpen ? 'Click to collapse' : 'Click to expand';
+        }
+
+        function saveData() {
+            const data = {};
+            projectData.forEach(stage => {
+                stage.items.forEach(item => {
+                    const input = document.getElementById(item.id);
+                    data[item.id] = input.value;
+                });
+            });
+            
+            const saveObject = {
+                version: 1,
+                timestamp: new Date().toISOString(),
+                data: data
+            };
+            
+            localStorage.setItem('arc_raiders_tracker_v1', JSON.stringify(saveObject));
+            
+            // Update last saved timestamp
+            updateLastSavedTime();
+            
+            // Flash save indicator
+            const indicator = document.getElementById('save-indicator');
+            indicator.classList.remove('hidden');
+            setTimeout(() => indicator.classList.add('hidden'), 1000);
+        }
+        
+        function updateLastSavedTime() {
+            const saved = localStorage.getItem('arc_raiders_tracker_v1');
+            if (saved) {
+                try {
+                    const saveObject = JSON.parse(saved);
+                    if (saveObject.timestamp) {
+                        const date = new Date(saveObject.timestamp);
+                        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                        document.getElementById('last-saved').textContent = `${dateStr} ${timeStr}`;
+                    }
+                } catch (e) {
+                    document.getElementById('last-saved').textContent = 'Unknown';
+                }
+            }
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('arc_raiders_tracker_v1');
+            if (saved) {
+                try {
+                    const saveObject = JSON.parse(saved);
+                    const data = saveObject.data || saveObject; // Support old format
+                    
+                    for (const [key, value] of Object.entries(data)) {
+                        const input = document.getElementById(key);
+                        if (input) {
+                            input.value = value;
+                            // Trigger visual updates
+                            handleInput(input);
+                        }
+                    }
+                    updateLastSavedTime();
+                } catch (e) {
+                    console.error('Error loading data:', e);
+                }
+            }
+        }
+        
+        function exportData() {
+            const data = {};
+            projectData.forEach(stage => {
+                stage.items.forEach(item => {
+                    const input = document.getElementById(item.id);
+                    data[item.id] = input.value;
+                });
+            });
+            
+            const exportObject = {
+                version: 1,
+                timestamp: new Date().toISOString(),
+                gameVersion: "Arc Raiders - Expedition Tracker",
+                data: data
+            };
+            
+            const dataStr = JSON.stringify(exportObject, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            
+            const timestamp = new Date().toISOString().split('T')[0];
+            link.download = `arc-raiders-expedition-${timestamp}.json`;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            // Show success feedback
+            const indicator = document.getElementById('save-indicator');
+            indicator.textContent = '✓ Exported';
+            indicator.classList.remove('hidden');
+            setTimeout(() => {
+                indicator.classList.add('hidden');
+                indicator.textContent = '✓ Saved';
+            }, 2000);
+        }
+        
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importObject = JSON.parse(e.target.result);
+                    const data = importObject.data || importObject; // Support old format
+                    
+                    // Validate and load data
+                    let loadedCount = 0;
+                    for (const [key, value] of Object.entries(data)) {
+                        const input = document.getElementById(key);
+                        if (input) {
+                            input.value = value;
+                            handleInput(input);
+                            loadedCount++;
+                        }
+                    }
+                    
+                    if (loadedCount > 0) {
+                        saveData(); // Save imported data to localStorage
+                        alert(`✓ Successfully imported ${loadedCount} items!`);
+                    } else {
+                        alert('⚠ No valid data found in the file.');
+                    }
+                } catch (error) {
+                    alert('❌ Error importing file: Invalid JSON format.');
+                    console.error('Import error:', error);
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset file input
+            event.target.value = '';
+        }
+
+        function resetData() {
+            if(confirm("⚠ Confirm Protocol Reset?\n\nThis will wipe all tracked progress.\n\nConsider exporting your data first!")) {
+                localStorage.removeItem('arc_raiders_tracker_v1');
+                document.querySelectorAll('input[type="number"]').forEach(input => {
+                    input.value = '';
+                    handleInput(input);
+                });
+                document.getElementById('last-saved').textContent = 'Never';
+            }
+        }
+    </script>
+</body>
+</html>
