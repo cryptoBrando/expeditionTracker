@@ -18,7 +18,7 @@ A comprehensive web-based tracker for managing expedition materials and deadline
 ## 🚀 Quick Start
 
 ### Online Version
-Visit: [https://yourusername.github.io/ArcRaiders/expeditionTracker.html](https://yourusername.github.io/ArcRaiders/expeditionTracker.html)
+Visit: https://cryptobrando.github.io/expeditionTracker/
 
 ### Local Usage
 1. Download `expeditionTracker.html`
