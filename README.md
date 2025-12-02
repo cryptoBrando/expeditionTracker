@@ -63,13 +63,6 @@ Use "🗑️ Reset Protocol" to clear all progress (prompts for confirmation).
 - Responsive grid layouts
 - Touch-friendly buttons with visual feedback
 
-## 🎨 Theme
-
-Custom Arc Raiders dark theme with orange accents:
-- Dark background: `#0f1115`
-- Panel background: `#1a1d24`
-- Accent color: `#ff5f1f`
-
 ## 📅 Expedition Timeline
 
 - **Window Opens**: December 15, 2025
@@ -90,7 +83,7 @@ MIT License - Free to use and modify
 
 ## 🙏 Credits
 
-Created for the Arc Raiders community by [Your Name]
+Created by cryptoBrando   Enjoy! =)
 
 ---
 
