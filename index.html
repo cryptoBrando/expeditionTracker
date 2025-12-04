@@ -144,9 +144,110 @@
         .collapsible-content.open {
             max-height: 1000px;
         }
+        
+        /* Custom Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            animation: fadeIn 0.2s ease-out;
+        }
+        .modal-overlay.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: var(--arc-panel);
+            border: 2px solid var(--arc-border);
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-input {
+            background-color: #0f1115;
+            border: 2px solid #333a45;
+            color: white;
+            padding: 0.75rem;
+            font-size: 1.25rem;
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            width: 100%;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .modal-input:focus {
+            border-color: var(--arc-orange);
+            outline: none;
+            box-shadow: 0 0 10px rgba(255, 95, 31, 0.3);
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .modal-btn {
+            flex: 1;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.875rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid;
+        }
+        .modal-btn-primary {
+            background-color: var(--arc-orange);
+            border-color: var(--arc-orange);
+            color: white;
+        }
+        .modal-btn-primary:hover {
+            background-color: #ff7a3f;
+            box-shadow: 0 0 15px rgba(255, 95, 31, 0.4);
+        }
+        .modal-btn-secondary {
+            background-color: transparent;
+            border-color: #333a45;
+            color: #9ca3af;
+        }
+        .modal-btn-secondary:hover {
+            border-color: #9ca3af;
+            color: white;
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
+
+    <!-- Custom Input Modal -->
+    <div id="custom-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold mb-2 text-center uppercase tracking-wide">Add Value</h3>
+            <p id="modal-subtitle" class="text-sm text-gray-400 text-center mb-4">Enter amount to add</p>
+            <input type="number" id="modal-input" class="modal-input" placeholder="0" min="0" />
+            <div class="modal-buttons">
+                <button id="modal-cancel" class="modal-btn modal-btn-secondary">Cancel</button>
+                <button id="modal-confirm" class="modal-btn modal-btn-primary">Confirm</button>
+            </div>
+        </div>
+    </div>
 
     <div class="max-w-4xl mx-auto">
         <!-- Header -->
@@ -486,25 +587,85 @@
         function adjustValuePrompt(itemId, operation) {
             const input = document.getElementById(itemId);
             const currentVal = parseInt(input.value) || 0;
+            const itemName = input.getAttribute('aria-label');
             
-            const promptMessage = operation === 'add' ? 'Add how much?' : 'Subtract how much?';
-            const userInput = prompt(promptMessage);
+            showCustomModal(operation, itemName, (amount) => {
+                if (amount === null) return; // User cancelled
+                
+                const delta = operation === 'add' ? amount : -amount;
+                let newVal = currentVal + delta;
+                newVal = Math.max(0, newVal); // Don't go below 0
+                
+                input.value = newVal;
+                handleInput(input);
+            });
+        }
+        
+        function showCustomModal(operation, itemName, callback) {
+            const modal = document.getElementById('custom-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalSubtitle = document.getElementById('modal-subtitle');
+            const modalInput = document.getElementById('modal-input');
+            const modalConfirm = document.getElementById('modal-confirm');
+            const modalCancel = document.getElementById('modal-cancel');
             
-            if (userInput === null) return; // User cancelled
+            // Set content based on operation
+            const isAdd = operation === 'add';
+            modalTitle.textContent = isAdd ? '➕ Add Value' : '➖ Subtract Value';
+            modalSubtitle.textContent = `${itemName} - Enter amount to ${isAdd ? 'add' : 'subtract'}`;
+            modalInput.value = '';
+            modalInput.placeholder = '0';
             
-            const amount = parseInt(userInput);
+            // Show modal
+            modal.classList.add('show');
+            setTimeout(() => modalInput.focus(), 100);
             
-            if (isNaN(amount) || amount < 0) {
-                alert('Please enter a valid positive number.');
-                return;
-            }
+            // Handle confirm
+            const confirmHandler = () => {
+                const amount = parseInt(modalInput.value);
+                
+                if (isNaN(amount) || amount < 0) {
+                    modalInput.style.borderColor = '#ef4444';
+                    modalInput.placeholder = 'Enter valid number';
+                    return;
+                }
+                
+                cleanup();
+                callback(amount);
+            };
             
-            const delta = operation === 'add' ? amount : -amount;
-            let newVal = currentVal + delta;
-            newVal = Math.max(0, newVal); // Don't go below 0
+            // Handle cancel
+            const cancelHandler = () => {
+                cleanup();
+                callback(null);
+            };
             
-            input.value = newVal;
-            handleInput(input);
+            // Handle Enter key
+            const keyHandler = (e) => {
+                if (e.key === 'Enter') confirmHandler();
+                if (e.key === 'Escape') cancelHandler();
+            };
+            
+            // Cleanup function
+            const cleanup = () => {
+                modal.classList.remove('show');
+                modalConfirm.removeEventListener('click', confirmHandler);
+                modalCancel.removeEventListener('click', cancelHandler);
+                modalInput.removeEventListener('keydown', keyHandler);
+                modal.removeEventListener('click', outsideClickHandler);
+                modalInput.style.borderColor = '#333a45';
+            };
+            
+            // Handle click outside modal
+            const outsideClickHandler = (e) => {
+                if (e.target === modal) cancelHandler();
+            };
+            
+            // Attach event listeners
+            modalConfirm.addEventListener('click', confirmHandler);
+            modalCancel.addEventListener('click', cancelHandler);
+            modalInput.addEventListener('keydown', keyHandler);
+            modal.addEventListener('click', outsideClickHandler);
         }
 
         function handleInput(input) {
