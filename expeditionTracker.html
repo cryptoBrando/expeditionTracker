@@ -494,7 +494,7 @@
                 // Header
                 let html = `
                     <div class="flex justify-between items-center mb-6 relative z-10">
-                        <h2 class="text-xl font-bold uppercase tracking-wide">${stage.title}</h2>
+                        <h2 class="text-xl font-bold uppercase tracking-wide accent-text">${stage.title}</h2>
                         <span id="badge-${stage.id}" class="text-xs border border-gray-600 text-gray-500 px-2 py-1 rounded transition-colors duration-300">INCOMPLETE</span>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 relative z-10">
@@ -517,16 +517,16 @@
                         : `<button class="increment-btn rounded" onclick="adjustValue('${item.id}', 1)" aria-label="Increase by 1">+1</button>
                            <button class="increment-btn rounded" onclick="adjustValue('${item.id}', 10)" aria-label="Increase by 10">+10</button>`;
                     
-                    const description = item.description ? `<div class="text-xs text-gray-500 italic mt-1">${item.description}</div>` : '';
+                    const description = item.description ? `<div class="text-xs text-gray-400 italic mt-1">${item.description}</div>` : '';
                     
                     html += `
                         <div class="flex flex-col">
-                            <div class="flex justify-between text-xs text-gray-400 mb-1">
-                                <span class="tooltip">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="tooltip font-semibold text-white">
                                     ${item.name}
                                     <span class="tooltiptext">Required: ${item.req.toLocaleString()}</span>
                                 </span>
-                                <span id="text-${item.id}">0 / ${item.req.toLocaleString()}</span>
+                                <span id="text-${item.id}" class="text-gray-300">0 / ${item.req.toLocaleString()}</span>
                             </div>
                             ${description}
                             <div class="flex items-center space-x-2 ${description ? 'mt-2' : ''}">
