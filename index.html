@@ -320,10 +320,10 @@
                 title: "Stage 5: Loading Phase (Item Value)",
                 isCurrency: true,
                 items: [
-                    { id: "s5_combat", name: "Combat Items Value", req: 250000 },
-                    { id: "s5_survival", name: "Survival Items Value", req: 100000 },
-                    { id: "s5_provisions", name: "Provisions Value", req: 180000 },
-                    { id: "s5_materials", name: "Materials Value", req: 300000 }
+                    { id: "s5_combat", name: "Combat Items Value", req: 250000, description: "Weapons, ammo, and defensive equipment" },
+                    { id: "s5_survival", name: "Survival Items Value", req: 100000, description: "First-aid kits, utility equipment, and survival gear" },
+                    { id: "s5_provisions", name: "Provisions Value", req: 180000, description: "Food, water, and essential consumables" },
+                    { id: "s5_materials", name: "Materials Value", req: 300000, description: "Crafting materials and raw components" }
                 ]
             }
         ];
@@ -404,6 +404,20 @@
                     const isCurrency = stage.isCurrency ? ' (Value)' : '';
                     const maxAttr = stage.isCurrency ? '' : `max="${item.req}"`;
                     
+                    // Different button layout for currency items (Stage 5)
+                    const isStage5 = stage.isCurrency;
+                    const decrementBtn = isStage5 
+                        ? `<button class="increment-btn rounded text-lg font-bold" onclick="adjustValuePrompt('${item.id}', 'subtract')" aria-label="Subtract amount">−</button>`
+                        : `<button class="increment-btn rounded" onclick="adjustValue('${item.id}', -10)" aria-label="Decrease by 10">-10</button>
+                           <button class="increment-btn rounded" onclick="adjustValue('${item.id}', -1)" aria-label="Decrease by 1">-1</button>`;
+                    
+                    const incrementBtn = isStage5
+                        ? `<button class="increment-btn rounded text-lg font-bold" onclick="adjustValuePrompt('${item.id}', 'add')" aria-label="Add amount">+</button>`
+                        : `<button class="increment-btn rounded" onclick="adjustValue('${item.id}', 1)" aria-label="Increase by 1">+1</button>
+                           <button class="increment-btn rounded" onclick="adjustValue('${item.id}', 10)" aria-label="Increase by 10">+10</button>`;
+                    
+                    const description = item.description ? `<div class="text-xs text-gray-500 italic mt-1">${item.description}</div>` : '';
+                    
                     html += `
                         <div class="flex flex-col">
                             <div class="flex justify-between text-xs text-gray-400 mb-1">
@@ -413,9 +427,9 @@
                                 </span>
                                 <span id="text-${item.id}">0 / ${item.req.toLocaleString()}</span>
                             </div>
-                            <div class="flex items-center space-x-2">
-                                <button class="increment-btn rounded" onclick="adjustValue('${item.id}', -10)" aria-label="Decrease by 10">-10</button>
-                                <button class="increment-btn rounded" onclick="adjustValue('${item.id}', -1)" aria-label="Decrease by 1">-1</button>
+                            ${description}
+                            <div class="flex items-center space-x-2 ${description ? 'mt-2' : ''}">
+                                ${decrementBtn}
                                 <input 
                                     type="number" 
                                     id="${item.id}" 
@@ -428,8 +442,7 @@
                                     oninput="handleInput(this)"
                                     aria-label="${item.name} quantity"
                                 >
-                                <button class="increment-btn rounded" onclick="adjustValue('${item.id}', 1)" aria-label="Increase by 1">+1</button>
-                                <button class="increment-btn rounded" onclick="adjustValue('${item.id}', 10)" aria-label="Increase by 10">+10</button>
+                                ${incrementBtn}
                             </div>
                             <!-- Mini Progress Bar for item -->
                             <div class="w-full h-1 bg-gray-800 mt-1 rounded-full overflow-hidden">
@@ -465,6 +478,30 @@
             if (maxAttr) {
                 newVal = Math.min(newVal, parseInt(maxAttr)); // Respect max if it exists
             }
+            
+            input.value = newVal;
+            handleInput(input);
+        }
+        
+        function adjustValuePrompt(itemId, operation) {
+            const input = document.getElementById(itemId);
+            const currentVal = parseInt(input.value) || 0;
+            
+            const promptMessage = operation === 'add' ? 'Add how much?' : 'Subtract how much?';
+            const userInput = prompt(promptMessage);
+            
+            if (userInput === null) return; // User cancelled
+            
+            const amount = parseInt(userInput);
+            
+            if (isNaN(amount) || amount < 0) {
+                alert('Please enter a valid positive number.');
+                return;
+            }
+            
+            const delta = operation === 'add' ? amount : -amount;
+            let newVal = currentVal + delta;
+            newVal = Math.max(0, newVal); // Don't go below 0
             
             input.value = newVal;
             handleInput(input);
